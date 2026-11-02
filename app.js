@@ -1,4 +1,4 @@
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const SLOTS = [['des','Desayuno'],['com','Comida'],['cen','Cena'],['sna','Snack']];
 const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const FOOD = Object.fromEntries(FOODS.map(f => [f.id, f]));
@@ -16,6 +16,7 @@ let profile = store.get('profile', null);
 let plan = store.get('plan', null);
 let done = store.get('done', {});
 let shopDone = store.get('shop', {});
+let excl = store.get('excl', []);
 let tab = 'menu';
 let selDay = (new Date().getDay() + 6) % 7;
 let foodQ = '', foodFilter = 'all';
@@ -28,10 +29,27 @@ function monday() {
 }
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
+const allowed = d => !d.ing.some(([id]) => excl.includes(id));
+const slotIds = slot => { const a = DISHES.filter(d => d.slot === slot && allowed(d)).map(d => d.id); return a.length ? a : DISHES.filter(d => d.slot === slot).map(d => d.id); };
+const slotsOk = () => SLOTS.every(([s]) => DISHES.some(d => d.slot === s && allowed(d)));
+
+// Cambia los platos del menú que llevan algo excluido
+function applyExcl() {
+  plan.days.forEach(day => SLOTS.forEach(([s]) => {
+    if (!allowed(DISH[day[s]])) { const o = slotIds(s); day[s] = o[Math.floor(Math.random() * o.length)]; }
+  }));
+  store.set('plan', plan);
+}
+function setExcl(next, ctx) {
+  const prev = excl; excl = next;
+  if (!slotsOk()) { excl = prev; toast('Así no quedarían platos para alguna comida'); return false; }
+  store.set('excl', excl); ensurePlan(); applyExcl(); return true;
+}
+
 function genPlan() {
   const days = Array.from({ length: 7 }, () => ({}));
   for (const [slot] of SLOTS) {
-    const ids = DISHES.filter(d => d.slot === slot).map(d => d.id);
+    const ids = slotIds(slot);
     const pool = shuffle(ids).concat(shuffle(ids));
     days.forEach((d, i) => d[slot] = pool[i]);
   }
@@ -102,7 +120,7 @@ function openSwap(slot) {
   const cur = plan.days[selDay][slot];
   openSheet(`<h3>Cambiar ${SLOTS.find(s => s[0] === slot)[1].toLowerCase()}</h3>` +
     `<button class="btn p big" data-pick="__rnd">🎲 Sorpréndeme</button><div style="height:10px"></div>` +
-    DISHES.filter(d => d.slot === slot).map(d => {
+    DISHES.filter(d => d.slot === slot && (allowed(d) || d.id === cur)).map(d => {
       const m = macros(d);
       return `<button class="alt ${d.id === cur ? 'cur' : ''}" data-pick="${d.id}"><span style="font-size:26px">${d.e}</span><span><b>${esc(d.name)}</b><small>${Math.round(m.k)} kcal · ${m.c.toFixed(1)} g carbos netos</small></span></button>`;
     }).join(''));
@@ -117,7 +135,7 @@ function renderFoods() {
   let cat = '';
   for (const f of list) {
     if (f.cat !== cat) { cat = f.cat; h += `<h2 class="cat">${cat}</h2>`; }
-    h += `<button class="food" data-food="${f.id}"><span class="e">${f.e}</span><span class="n">${esc(f.n)}<small>${f.c} g carbos netos / 100 g</small></span><span class="dot ${f.s}"></span></button>`;
+    h += `<button class="food" data-food="${f.id}"><span class="e">${f.e}</span><span class="n">${esc(f.n)}<small>${f.c} g carbos netos / 100 g${excl.includes(f.id) ? ' · 🚫 excluido del menú' : ''}</small></span><span class="dot ${f.s}"></span></button>`;
   }
   if (!list.length) h += '<p class="muted">No hay resultados.</p>';
   $('#view').innerHTML = h;
@@ -129,6 +147,7 @@ function openFood(id) {
   openSheet(`<h3>${f.e} ${esc(f.n)}</h3><span class="tag ${cls}">${lbl}</span>
     <div class="card" style="margin-top:12px"><label style="margin-top:0">Cantidad (g)</label><input id="grams" type="number" inputmode="numeric" value="100">
     <div class="chips" id="fm" style="margin-top:12px"></div></div>
+    <button class="btn big ${excl.includes(id) ? 'done' : ''}" data-xfood="${id}">${excl.includes(id) ? '✓ Excluido del menú (tocar para permitir)' : '🚫 No quiero esto en mi menú'}</button>
     <p class="muted">Los carbohidratos son <b>netos</b> (hidratos − fibra). Valores aproximados por 100 g.</p>`);
   const upd = () => {
     const r = (parseFloat($('#grams').value) || 0) / 100;
@@ -165,6 +184,12 @@ function renderProfile() {
     <label>Objetivo</label><select id="pg">${opt(0.8, p.goal, 'Perder peso')}${opt(1, p.goal, 'Mantener')}${opt(1.1, p.goal, 'Ganar peso')}</select>
     <label>Límite de carbohidratos netos (g/día)</label><input id="pk" type="number" inputmode="numeric" value="${p.carbs}">
     <button class="btn p big" id="save">Guardar perfil</button></div>
+    <div class="card"><b>🚫 Alimentos que no quiero en el menú</b><div class="muted">Toca una categoría para excluirla entera. Para un alimento concreto, ábrelo en la pestaña Alimentos.</div>
+    <div class="filters" style="flex-wrap:wrap;overflow:visible">${[...new Set(FOODS.map(f => f.cat))].map(c => {
+      const ids = FOODS.filter(f => f.cat === c).map(f => f.id), n = ids.filter(i => excl.includes(i)).length;
+      return `<button data-xcat="${esc(c)}" class="${n === ids.length ? 'on' : ''}">${n === ids.length ? '🚫 ' : n ? '◐ ' : ''}${esc(c)}</button>`;
+    }).join('')}</div>
+    <div class="muted">${excl.length ? 'Excluidos: ' + excl.map(i => FOOD[i].n.toLowerCase()).join(', ') : 'No has excluido nada.'}</div></div>
     <div class="card"><b>Tus objetivos diarios</b><div class="chips" style="margin-top:8px"><span class="chip">${T.k} kcal</span><span class="chip c">${T.c} g carbos</span><span class="chip">${T.p} g proteína</span><span class="chip">${T.f} g grasa</span></div></div>
     <div class="card"><b>Aplicación</b><div class="muted">Versión ${VERSION}</div><button class="btn big" id="upd">🔄 Buscar actualización</button></div>`;
 }
@@ -185,10 +210,18 @@ document.addEventListener('click', e => {
   else if (d.done) { const k = plan.week + '|' + selDay + '|' + d.done; done[k] = !done[k]; store.set('done', done); renderMenu(); }
   else if (d.swap) openSwap(d.swap);
   else if (d.pick) {
-    const slot = $('#sheet').dataset.slot, ids = DISHES.filter(x => x.slot === slot).map(x => x.id);
+    const slot = $('#sheet').dataset.slot, ids = slotIds(slot);
     let id = d.pick;
     if (id === '__rnd') { const o = ids.filter(x => x !== plan.days[selDay][slot]); id = o[Math.floor(Math.random() * o.length)]; }
     plan.days[selDay][slot] = id; store.set('plan', plan); closeSheet(); renderMenu(); toast('Plato cambiado');
+  }
+  else if (d.xcat) {
+    const ids = FOODS.filter(f => f.cat === d.xcat).map(f => f.id), all = ids.every(i => excl.includes(i));
+    if (setExcl(all ? excl.filter(i => !ids.includes(i)) : [...new Set([...excl, ...ids])])) { renderProfile(); toast(all ? 'Categoría permitida' : 'Menú actualizado sin ' + d.xcat.toLowerCase()); }
+  }
+  else if (d.xfood) {
+    const id = d.xfood;
+    if (setExcl(excl.includes(id) ? excl.filter(i => i !== id) : [...excl, id])) { openFood(id); renderFoods(); toast(excl.includes(id) ? 'Excluido del menú' : 'Permitido otra vez'); }
   }
   else if (d.ff) { foodFilter = d.ff; renderFoods(); }
   else if (d.food) openFood(d.food);

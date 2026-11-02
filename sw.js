@@ -1,5 +1,5 @@
 // Sube este número en cada versión nueva: el móvil detecta el cambio y se actualiza solo.
-const V = 'keto-1.0.0';
+const V = 'keto-1.1.0';
 const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'foods.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
