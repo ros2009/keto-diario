@@ -1,4 +1,4 @@
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const SLOTS = [['des','Desayuno'],['com','Comida'],['cen','Cena'],['sna','Snack']];
 const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const FOOD = Object.fromEntries(FOODS.map(f => [f.id, f]));
@@ -161,7 +161,9 @@ function openRecipe(id) {
 
 function renderFoods() {
   const q = foodQ.trim().toLowerCase();
-  const list = FOODS.filter(f => (foodFilter === 'all' || f.s === foodFilter) && (!q || f.n.toLowerCase().includes(q)));
+  const cats = [...new Set(FOODS.map(f => f.cat))], rank = { ok: 0, mod: 1, no: 2 };
+  const list = FOODS.filter(f => (foodFilter === 'all' || f.s === foodFilter) && (!q || f.n.toLowerCase().includes(q)))
+    .sort((a, b) => cats.indexOf(a.cat) - cats.indexOf(b.cat) || rank[a.s] - rank[b.s] || a.n.localeCompare(b.n));
   let h = `<input id="q" type="search" placeholder="Buscar alimento…" value="${esc(foodQ)}">
     <div class="filters">${[['all', 'Todos'], ['ok', '✅ Sí'], ['mod', '⚠️ Moderación'], ['no', '⛔ No']].map(([k, l]) => `<button data-ff="${k}" class="${foodFilter === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   let cat = '';
