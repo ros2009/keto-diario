@@ -1,4 +1,4 @@
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 const SLOTS = [['des','Desayuno'],['com','Comida'],['cen','Cena'],['sna','Snack']];
 const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const FOOD = Object.fromEntries(FOODS.map(f => [f.id, f]));
@@ -239,16 +239,21 @@ $('#backdrop').onclick = closeSheet;
 
 // ---------- actualizaciones ----------
 let reg = null;
-async function checkUpdate() {
-  if (!reg) return toast('Las actualizaciones solo funcionan con la app instalada desde internet');
-  try { await reg.update(); toast('Ya tienes la última versión'); } catch { toast('Sin conexión'); }
+async function checkUpdate(manual = true) {
+  if (!reg) return manual && toast('Las actualizaciones solo funcionan con la app instalada desde internet');
+  try {
+    await reg.update();
+    if (reg.installing || reg.waiting) toast('Descargando versión nueva…');
+    else if (manual) toast('Ya tienes la última versión (v' + VERSION + ')');
+  } catch { manual && toast('Sin conexión'); }
 }
 if ('serviceWorker' in navigator) {
   const had = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker.register('sw.js').then(r => reg = r).catch(() => {});
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { reg = r; checkUpdate(false); }).catch(() => {});
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (had) toast('Nueva versión lista', 'Actualizar', () => location.reload());
   });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(false); });
 }
 
 render();
