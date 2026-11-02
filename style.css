@@ -1,0 +1,73 @@
+:root{--bg:#f4f7f5;--card:#fff;--ink:#12261f;--mut:#62756d;--line:#e2e9e5;--brand:#0f766e;--brand2:#14b8a6;--ok:#16a34a;--mod:#d97706;--no:#dc2626;--okbg:#dcfce7;--modbg:#fef3c7;--nobg:#fee2e2;--r:18px}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1714;--card:#16231f;--ink:#e8f1ed;--mut:#93a8a0;--line:#243630;--brand:#2dd4bf;--brand2:#0f766e;--okbg:#14351f;--modbg:#3a2c0d;--nobg:#3d1618}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff}
+.top h1{margin:0;font-size:20px}
+.top button{background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:12px;padding:8px 12px;font-size:14px}
+main{max-width:560px;margin:0 auto;padding:14px 16px}
+.card{background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.days{display:flex;gap:6px;margin-bottom:12px}
+.days button{flex:1;border:0;border-radius:14px;padding:8px 0;background:var(--card);color:var(--ink);font-size:13px;line-height:1.2}
+.days button b{display:block;font-size:16px}
+.days button.on{background:var(--brand);color:#fff}
+.days button.today:not(.on){outline:2px solid var(--brand2)}
+.sum{display:flex;gap:14px;align-items:center}
+.ring{--p:0;width:92px;height:92px;border-radius:50%;flex:none;display:grid;place-items:center;background:conic-gradient(var(--brand2) calc(var(--p)*1%),var(--line) 0)}
+.ring div{width:70px;height:70px;border-radius:50%;background:var(--card);display:grid;place-items:center;text-align:center;font-size:12px;color:var(--mut);line-height:1.1}
+.ring b{display:block;font-size:18px;color:var(--ink)}
+.bars{flex:1}
+.bar{margin:4px 0}
+.bar small{display:flex;justify-content:space-between;color:var(--mut);font-size:12px}
+.bar i{display:block;height:7px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar i u{display:block;height:100%;background:var(--brand2);border-radius:4px}
+.bar.over i u{background:var(--mod)}
+.warn{background:var(--modbg);color:var(--mod);border-radius:12px;padding:8px 12px;font-size:14px;margin-bottom:12px}
+.meal{display:flex;gap:10px}
+.meal .e{font-size:30px}
+.meal .b{flex:1;min-width:0}
+.meal .s{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.meal h3{margin:2px 0 4px;font-size:16px}
+.meal p{margin:0 0 8px;font-size:13px;color:var(--mut)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chip{background:var(--bg);border-radius:20px;padding:2px 9px;font-size:12px}
+.chip.c{background:var(--okbg);color:var(--ok)}
+.row{display:flex;gap:8px}
+.btn{border:0;border-radius:12px;padding:8px 14px;font-size:14px;background:var(--bg);color:var(--ink)}
+.btn.p{background:var(--brand);color:var(--bg)}
+.btn.done{background:var(--okbg);color:var(--ok)}
+.big{width:100%;padding:13px;font-size:16px;margin-top:6px}
+input,select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.filters{display:flex;gap:6px;overflow-x:auto;margin:10px 0}
+.filters button{flex:none;border:0;border-radius:20px;padding:7px 13px;background:var(--card);color:var(--ink);font-size:14px}
+.filters button.on{background:var(--brand);color:var(--bg)}
+h2.cat{font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 6px}
+.food{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border-radius:14px;margin-bottom:6px;width:100%;border:0;color:var(--ink);text-align:left;font-size:16px}
+.food .e{font-size:24px}
+.food .n{flex:1}
+.food small{display:block;color:var(--mut);font-size:12px}
+.dot{width:12px;height:12px;border-radius:50%;flex:none}
+.ok{background:var(--ok)}.mod{background:var(--mod)}.no{background:var(--no)}
+.tag{display:inline-block;border-radius:10px;padding:3px 10px;font-size:13px}
+.tag.ok{background:var(--okbg);color:var(--ok)}.tag.mod{background:var(--modbg);color:var(--mod)}.tag.no{background:var(--nobg);color:var(--no)}
+.shop{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border-radius:14px;margin-bottom:6px}
+.shop input{width:22px;height:22px;flex:none}
+.shop.got span{text-decoration:line-through;opacity:.5}
+.shop span{flex:1}
+.avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;display:grid;place-items:center;font-size:28px;font-weight:700}
+.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:6}
+.tabs button{flex:1;border:0;background:none;color:var(--mut);padding:8px 0 7px;font-size:12px}
+.tabs button span{display:block;font-size:22px}
+.tabs button.on{color:var(--brand)}
+#backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8}
+#sheet{position:fixed;left:0;right:0;bottom:0;max-height:82vh;overflow:auto;background:var(--bg);border-radius:24px 24px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));z-index:9;max-width:600px;margin:0 auto}
+#sheet h3{margin:0 0 10px}
+#toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#12261f;color:#fff;padding:11px 18px;border-radius:24px;z-index:10;font-size:14px;max-width:90%;text-align:center}
+#toast button{background:none;border:0;color:#5eead4;font-weight:700;margin-left:10px;font-size:14px}
+.alt{width:100%;text-align:left;border:0;background:var(--card);color:var(--ink);border-radius:14px;padding:10px 12px;margin-bottom:6px;display:flex;gap:10px;align-items:center;font-size:15px}
+.alt.cur{outline:2px solid var(--brand2)}
+.alt small{display:block;color:var(--mut)}
+.muted{color:var(--mut);font-size:13px}

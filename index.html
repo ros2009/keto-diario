@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>Keto Diario</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><h1 id="title">Keto Diario</h1><div id="topActions"></div></header>
+<main id="view"></main>
+<nav class="tabs">
+  <button data-tab="menu" class="on"><span>📅</span>Menú</button>
+  <button data-tab="foods"><span>🥑</span>Alimentos</button>
+  <button data-tab="shop"><span>🛒</span>Compra</button>
+  <button data-tab="profile"><span>👤</span>Perfil</button>
+</nav>
+<div id="backdrop" hidden></div>
+<section id="sheet" hidden></section>
+<div id="toast" hidden></div>
+<script src="foods.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
