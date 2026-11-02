@@ -1,4 +1,4 @@
-const VERSION = '1.1.1';
+const VERSION = '1.2.0';
 const SLOTS = [['des','Desayuno'],['com','Comida'],['cen','Cena'],['sna','Snack']];
 const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const FOOD = Object.fromEntries(FOODS.map(f => [f.id, f]));
@@ -36,7 +36,7 @@ const slotsOk = () => SLOTS.every(([s]) => DISHES.some(d => d.slot === s && allo
 // Cambia los platos del menú que llevan algo excluido
 function applyExcl() {
   plan.days.forEach(day => SLOTS.forEach(([s]) => {
-    if (!allowed(DISH[day[s]])) { const o = slotIds(s); day[s] = o[Math.floor(Math.random() * o.length)]; }
+    if (day[s] && !allowed(DISH[day[s]])) { const o = slotIds(s); day[s] = o[Math.floor(Math.random() * o.length)]; }
   }));
   store.set('plan', plan);
 }
@@ -65,7 +65,7 @@ function macros(dish) {
 }
 function dayTotals(i) {
   const t = { k: 0, p: 0, f: 0, c: 0 };
-  for (const [slot] of SLOTS) { const m = macros(DISH[plan.days[i][slot]]); for (const k in t) t[k] += m[k]; }
+  for (const [slot] of SLOTS) { if (!plan.days[i][slot]) continue; const m = macros(DISH[plan.days[i][slot]]); for (const k in t) t[k] += m[k]; }
   return t;
 }
 function targets() {
@@ -106,25 +106,57 @@ function renderMenu() {
   h += `<div class="card sum"><div class="ring" style="--p:${Math.min(100, t.k / T.k * 100)}"><div><span><b>${Math.round(t.k)}</b>kcal</span></div></div>
     <div class="bars">${bar('Carbos netos', t.c, T.c, 'g', true)}${bar('Proteína', t.p, T.p, 'g')}${bar('Grasa', t.f, T.f, 'g')}</div></div>`;
   for (const [slot, label] of SLOTS) {
+    if (!plan.days[selDay][slot]) {
+      h += `<div class="card meal"><div class="e">➕</div><div class="b"><div class="s">${label}</div><h3>Sin plato</h3><div class="row"><button class="btn p" data-swap="${slot}">Elegir plato</button></div></div></div>`;
+      continue;
+    }
     const d = DISH[plan.days[selDay][slot]], m = macros(d), key = plan.week + '|' + selDay + '|' + slot;
     h += `<div class="card meal"><div class="e">${d.e}</div><div class="b"><div class="s">${label}</div><h3>${esc(d.name)}</h3>
       <p>${d.ing.map(([id, g]) => `${g} g ${FOOD[id].n.toLowerCase()}`).join(' · ')}</p>
       <div class="chips"><span class="chip">${Math.round(m.k)} kcal</span><span class="chip c">${m.c.toFixed(1)} g carbos</span><span class="chip">${Math.round(m.p)} g prot</span><span class="chip">${Math.round(m.f)} g grasa</span></div>
-      <div class="row"><button class="btn ${done[key] ? 'done' : ''}" data-done="${slot}">${done[key] ? '✓ Hecho' : 'Marcar hecho'}</button><button class="btn" data-swap="${slot}">🔄 Cambiar</button></div></div></div>`;
+      <div class="row"><button class="btn ${done[key] ? 'done' : ''}" data-done="${slot}">${done[key] ? '✓ Hecho' : 'Marcar hecho'}</button><button class="btn" data-swap="${slot}">🔄 Cambiar</button><button class="btn" data-rec="${d.id}">📖 Receta</button></div></div></div>`;
   }
-  h += '<button class="btn big" id="regen">🎲 Generar otra semana</button>';
+  h += '<button class="btn big" id="regen">🎲 Generar otra semana</button><button class="btn big" id="clearweek">✍️ Empezar menú manual (vaciar semana)</button>';
   $('#view').innerHTML = h;
 }
 
-function openSwap(slot) {
+function openSwap(slot, all = false) {
   const cur = plan.days[selDay][slot];
-  openSheet(`<h3>Cambiar ${SLOTS.find(s => s[0] === slot)[1].toLowerCase()}</h3>` +
-    `<button class="btn p big" data-pick="__rnd">🎲 Sorpréndeme</button><div style="height:10px"></div>` +
-    DISHES.filter(d => d.slot === slot && (allowed(d) || d.id === cur)).map(d => {
+  const list = DISHES.filter(d => all || (d.slot === slot && (allowed(d) || d.id === cur)));
+  openSheet(`<h3>Elegir ${SLOTS.find(s => s[0] === slot)[1].toLowerCase()} · ${DAYS[selDay]}</h3>
+    <div class="filters"><button data-swapall="0" class="${all ? '' : 'on'}">Para esta comida</button><button data-swapall="1" class="${all ? 'on' : ''}">Todas las recetas</button></div>
+    <div class="row"><button class="btn p" data-pick="__rnd">🎲 Sorpréndeme</button><button class="btn" data-pick="__none">Dejar vacío</button></div><div style="height:10px"></div>` +
+    list.map(d => {
       const m = macros(d);
-      return `<button class="alt ${d.id === cur ? 'cur' : ''}" data-pick="${d.id}"><span style="font-size:26px">${d.e}</span><span><b>${esc(d.name)}</b><small>${Math.round(m.k)} kcal · ${m.c.toFixed(1)} g carbos netos</small></span></button>`;
+      return `<button class="alt ${d.id === cur ? 'cur' : ''}" data-pick="${d.id}"><span style="font-size:26px">${d.e}</span><span><b>${esc(d.name)}</b><small>${Math.round(m.k)} kcal · ${m.c.toFixed(1)} g carbos netos${allowed(d) ? '' : ' · 🚫'}</small></span></button>`;
     }).join(''));
   $('#sheet').dataset.slot = slot;
+}
+
+let recSlot = 'all', recQ = '';
+function renderRecipes() {
+  const q = recQ.trim().toLowerCase();
+  const list = DISHES.filter(d => (recSlot === 'all' || d.slot === recSlot) && (!q || d.name.toLowerCase().includes(q) || d.ing.some(([i]) => FOOD[i].n.toLowerCase().includes(q))));
+  $('#view').innerHTML = `<input id="rq" type="search" placeholder="Buscar receta o ingrediente…" value="${esc(recQ)}">
+    <div class="filters">${[['all', 'Todas'], ...SLOTS].map(([k, l]) => `<button data-rf="${k}" class="${recSlot === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <p class="muted">${list.length} recetas · tócalas para ver la preparación y añadirlas a tu menú</p>` +
+    (list.map(d => {
+      const m = macros(d);
+      return `<button class="alt" data-rec="${d.id}"><span style="font-size:26px">${d.e}</span><span><b>${esc(d.name)}</b><small>${Math.round(m.k)} kcal · ${m.c.toFixed(1)} g carbos netos${allowed(d) ? '' : ' · 🚫'}</small></span></button>`;
+    }).join('') || '<p class="muted">No hay resultados.</p>');
+  const r = $('#rq'); r.oninput = () => { recQ = r.value; const p = r.selectionStart; renderRecipes(); const n = $('#rq'); n.focus(); n.setSelectionRange(p, p); };
+}
+
+function openRecipe(id) {
+  const d = DISH[id], m = macros(d);
+  openSheet(`<h3>${d.e} ${esc(d.name)}</h3>
+    <div class="chips"><span class="chip">${Math.round(m.k)} kcal</span><span class="chip c">${m.c.toFixed(1)} g carbos netos</span><span class="chip">${Math.round(m.p)} g prot</span><span class="chip">${Math.round(m.f)} g grasa</span></div>
+    <div class="card"><b>Ingredientes</b><ul>${d.ing.map(([i, g]) => `<li>${g} g de ${FOOD[i].n.toLowerCase()}${excl.includes(i) ? ' 🚫' : ''}</li>`).join('')}</ul></div>
+    <div class="card"><b>Preparación</b><p style="margin:6px 0 0">${esc(STEPS[id] || '')}</p></div>
+    <div class="card"><b>Añadir a mi menú</b><label>Día</label><div class="filters" id="rdays">${DAYS.map((x, i) => `<button data-rday="${i}" class="${i === selDay ? 'on' : ''}">${x}</button>`).join('')}</div>
+    <label>Comida</label><div class="filters" id="rslots">${SLOTS.map(([k, l]) => `<button data-rslot="${k}" class="${k === d.slot ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <button class="btn p big" data-radd="${id}">➕ Añadir</button></div>`);
+  $('#sheet').dataset.rday = selDay; $('#sheet').dataset.rslot = d.slot;
 }
 
 function renderFoods() {
@@ -159,7 +191,7 @@ function openFood(id) {
 function renderShop() {
   ensurePlan();
   const tot = {};
-  plan.days.forEach(d => SLOTS.forEach(([s]) => DISH[d[s]].ing.forEach(([id, g]) => tot[id] = (tot[id] || 0) + g)));
+  plan.days.forEach(d => SLOTS.forEach(([s]) => d[s] && DISH[d[s]].ing.forEach(([id, g]) => tot[id] = (tot[id] || 0) + g)));
   const ids = Object.keys(tot).sort((a, b) => FOOD[a].cat.localeCompare(FOOD[b].cat) || FOOD[a].n.localeCompare(FOOD[b].n));
   let h = '<p class="muted">Todo lo que necesitas para los 7 días del menú actual.</p>', cat = '';
   for (const id of ids) {
@@ -196,8 +228,8 @@ function renderProfile() {
 
 function render() {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  $('#title').textContent = { menu: 'Menú semanal', foods: 'Alimentos', shop: 'Lista de la compra', profile: 'Perfil' }[tab];
-  ({ menu: renderMenu, foods: renderFoods, shop: renderShop, profile: renderProfile })[tab]();
+  $('#title').textContent = { menu: 'Menú semanal', recipes: 'Recetas', foods: 'Alimentos', shop: 'Lista de la compra', profile: 'Perfil' }[tab];
+  ({ menu: renderMenu, recipes: renderRecipes, foods: renderFoods, shop: renderShop, profile: renderProfile })[tab]();
   window.scrollTo(0, 0);
 }
 
@@ -213,7 +245,20 @@ document.addEventListener('click', e => {
     const slot = $('#sheet').dataset.slot, ids = slotIds(slot);
     let id = d.pick;
     if (id === '__rnd') { const o = ids.filter(x => x !== plan.days[selDay][slot]); id = o[Math.floor(Math.random() * o.length)]; }
-    plan.days[selDay][slot] = id; store.set('plan', plan); closeSheet(); renderMenu(); toast('Plato cambiado');
+    plan.days[selDay][slot] = id === '__none' ? null : id; store.set('plan', plan); closeSheet(); renderMenu(); toast(id === '__none' ? 'Comida vacía' : 'Plato cambiado');
+  }
+  else if (d.swapall !== undefined) openSwap($('#sheet').dataset.slot, d.swapall === '1');
+  else if (d.rec) openRecipe(d.rec);
+  else if (d.rf) { recSlot = d.rf; renderRecipes(); }
+  else if (d.rday !== undefined) { $('#sheet').dataset.rday = d.rday; document.querySelectorAll('#rdays button').forEach(b => b.classList.toggle('on', b === t)); }
+  else if (d.rslot) { $('#sheet').dataset.rslot = d.rslot; document.querySelectorAll('#rslots button').forEach(b => b.classList.toggle('on', b === t)); }
+  else if (d.radd) {
+    const day = +$('#sheet').dataset.rday, slot = $('#sheet').dataset.rslot;
+    plan.days[day][slot] = d.radd; store.set('plan', plan); selDay = day; closeSheet(); tab = 'menu'; render();
+    toast('Añadido: ' + DAYS[day] + ' · ' + SLOTS.find(s => s[0] === slot)[1].toLowerCase());
+  }
+  else if (t.id === 'clearweek') {
+    if (confirm('¿Vaciar todo el menú de la semana para montarlo a mano?')) { plan.days = Array.from({ length: 7 }, () => ({})); store.set('plan', plan); done = {}; store.set('done', done); renderMenu(); }
   }
   else if (d.xcat) {
     const ids = FOODS.filter(f => f.cat === d.xcat).map(f => f.id), all = ids.every(i => excl.includes(i));
